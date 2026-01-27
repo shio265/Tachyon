@@ -1,5 +1,5 @@
 import express from "express";
-import { adminAuth } from "../../utlis/auth.js";
+import { adminAuth } from "../../utils/auth.js";
 import {
   getAllApiKeys,
   createApiKey,

@@ -1,5 +1,5 @@
 import express from "express";
-import limiter from "../../utlis/rateLimiter.js";
+import limiter from "../../utils/rateLimiter.js";
 import process from "process";
 
 const router = express.Router();
