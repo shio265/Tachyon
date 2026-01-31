@@ -1,15 +1,15 @@
 import express from "express";
-import { adminAuth } from "../../utils/auth.js";
+import { adminAuth } from "../../../utils/auth.js";
 import {
   getAllApiKeys,
   createApiKey,
   deactivateApiKey
-} from "../../database/queries/api_keys.js";
+} from "../../../database/queries/api_keys.js";
 import crypto from "crypto";
 
 const router = express.Router();
 
-// All routes require admin authentication
+// require admin authentication
 router.use(adminAuth);
 
 /**
@@ -64,7 +64,17 @@ router.post("/", async (req, res) => {
       data: newKey
     });
   } catch (error) {
+    // Handle duplicate name error (expected validation error)
+    if (error.code === 11000 || error.message?.includes("already exists")) {
+      return res.status(409).json({
+        success: false,
+        error: "API key with this name already exists"
+      });
+    }
+    
+    // Log only unexpected errors
     console.error("Error creating API key:", error);
+    
     res.status(500).json({
       success: false,
       error: "Failed to create API key"

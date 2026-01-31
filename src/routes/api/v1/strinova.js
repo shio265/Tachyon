@@ -1,7 +1,6 @@
 import express from "express";
-import { getAllRedeemCodes, createRedeemCode } from "../../database/queries/redeem_codes.js";
-import { adminAuth } from "../../utils/auth.js";
-import limiter from "../../utils/rateLimiter.js";
+import { getAllRedeemCodes, createRedeemCode } from "../../../database/queries/redeem_codes.js";
+import limiter from "../../../utils/rateLimiter.js";
 import process from "process";
 
 const router = express.Router();
@@ -17,7 +16,7 @@ router.use(limiter);
 router.get("/", (req, res) => {
   res.json({
     status: "200",
-    message: "i'm alive!",
+    message: "Strinova API is operational",
     rateLimit: {
       limit: req.rateLimit?.limit || rateLimitMaxRequests || "unlimited",
       remaining: req.rateLimit?.remaining ?? "unlimited",
@@ -80,14 +79,14 @@ router.get("/code", async (req, res) => {
  * Create a new redeem code
  * Body: { uploader_id, code, expired_at?, rewards? }
  * Response: { success, data?, error? }
- * Note: Requires authentication via Authorization header
+ * Note: Requires authentication via x-api-key header
  * 
  * Supported date formats for expired_at:
  * - "2026-12-31" (YYYY-MM-DD)
  * - "31/12/2026" (DD/MM/YYYY)
  * - "2026-12-31T23:59:59.000Z" (ISO)
  */
-router.post("/code", adminAuth, async (req, res) => {
+router.post("/code", async (req, res) => {
   try {
     const { uploader_id, code, expired_at, rewards } = req.body;
     
@@ -142,15 +141,16 @@ router.post("/code", adminAuth, async (req, res) => {
       data: newCode
     });
   } catch (error) {
-    console.error("Error creating redeem code:", error);
-    
-    // Handle duplicate code error
-    if (error.code === 11000) {
+    // Handle duplicate code error (expected validation error)
+    if (error.code === 11000 || error.message?.includes("already exists")) {
       return res.status(409).json({
         success: false,
         error: "Redeem code already exists"
       });
     }
+    
+    // Log only unexpected errors
+    console.error("Error creating redeem code:", error);
     
     res.status(500).json({
       success: false,

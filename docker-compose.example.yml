@@ -1,0 +1,44 @@
+services:
+  tachyon:
+    image: tachyon
+    container_name: tachyon
+    ports:
+      - "8080:8080"
+    environment:
+      MONGODB_DBNAME: your_db_name_here # ex: Tamagochi
+      MONGODB_URI: mongodb+srv://${MONGODB_USER}:${MONGODB_PASSWORD}@${MONGODB_CLUSTER}
+      # API Settings
+      PORT: 8080
+      RATE_LIMITER: 60
+      RATE_LIMITER_TIME: 60000
+      RATE_LIMITER_MAX_REQUESTS: 60
+      # Other Settings
+      AUTH_KEY: example # change this to a strong random string
+      CORS_ORIGIN: "*"
+      SERVER_URL: http://localhost:8080 # for local test use localhost, for production use your domain
+    volumes:
+      - .:/app
+    networks:
+      - api
+
+  caddy_tachyon:
+    image: caddy:latest
+    container_name: caddy_tachyon
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - tachyon
+    networks:
+      - api
+
+volumes:
+  caddy_data:
+  caddy_config:
+
+networks:
+  api:

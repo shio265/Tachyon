@@ -1,4 +1,4 @@
-# tamagochi
+# Tachyon
 
 To install dependencies:
 

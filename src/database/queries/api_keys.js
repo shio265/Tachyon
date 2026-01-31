@@ -60,6 +60,14 @@ async function getAllApiKeys() {
 async function createApiKey(keyData) {
   const db = dbClient.db(DB_NAME);
   
+  // Check if API key with the same name already exists
+  const existingKey = await db.collection("api_keys").findOne({ name: keyData.name });
+  if (existingKey) {
+    const error = new Error("API key with this name already exists");
+    error.code = 11000; // MongoDB duplicate key error code
+    throw error;
+  }
+  
   const result = await db.collection("api_keys").insertOne({
     key: keyData.key,
     name: keyData.name,

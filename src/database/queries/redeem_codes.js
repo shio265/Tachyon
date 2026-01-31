@@ -61,6 +61,14 @@ async function getAllRedeemCodes() {
 async function createRedeemCode(codeData) {
   const db = dbClient.db(DB_NAME);
   
+  // Check if code already exists
+  const existingCode = await db.collection("redeem_codes").findOne({ code: codeData.code });
+  if (existingCode) {
+    const error = new Error("Redeem code already exists");
+    error.code = 11000; // MongoDB duplicate key error code
+    throw error;
+  }
+  
   const redeemCodeDoc = {
     uploader_id: new ObjectId(codeData.uploader_id),
     code: codeData.code,
