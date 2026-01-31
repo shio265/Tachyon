@@ -1,4 +1,9 @@
 function loggingMiddleware(req, res, next) {
+  // Skip logging for favicon requests
+  if (req.path === '/favicon.ico') {
+    return next();
+  }
+  
   const startTime = Date.now();
   
   const ip = req.headers['x-forwarded-for']?.split(',')[0].trim() 
@@ -9,11 +14,7 @@ function loggingMiddleware(req, res, next) {
   
   res.on('finish', () => {
     const duration = Date.now() - startTime;
-    if (res.statusCode >= 400 && res.statusCode < 500) {
-      console.warn(`[${new Date().toISOString()}] ${res.statusCode} ${req.method} ${req.path} ${duration}ms | ip: ${ip}`);
-    } else {
-      console.log(`[${new Date().toISOString()}] ${res.statusCode} ${req.method} ${req.path} ${duration}ms | ip: ${ip}`);
-    }
+    console.log(`[${new Date().toISOString()}] ${req.method} ${res.statusCode} ${req.path} ${duration}ms | ip: ${ip}`);
   });
   
   next();

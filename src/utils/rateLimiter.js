@@ -10,7 +10,6 @@ const limiter = rateLimit({
     max: rateLimitMaxRequests,
     standardHeaders: true,
     legacyHeaders: false,
-    trust: true,
     skip: async (req) => {
         // Bypass rate limit if valid x-api-key is provided
         const apiKey = req.headers['x-api-key'];
