@@ -45,6 +45,7 @@ async function getAllApiKeys() {
     id: key._id.toString(),
     key: key.key,
     name: key.name,
+    discord_uid: key.discord_uid || null,
     description: key.description || null,
     is_active: key.is_active,
     created_at: key.created_at.toISOString(),
@@ -64,13 +65,14 @@ async function createApiKey(keyData) {
   const existingKey = await db.collection("api_keys").findOne({ name: keyData.name });
   if (existingKey) {
     const error = new Error("API key with this name already exists");
-    error.code = 11000; // MongoDB duplicate key error code
+    error.code = 11000; 
     throw error;
   }
   
   const result = await db.collection("api_keys").insertOne({
     key: keyData.key,
     name: keyData.name,
+    discord_uid: keyData.discord_uid || null,
     description: keyData.description || null,
     is_active: true,
     created_at: new Date(),
@@ -81,6 +83,7 @@ async function createApiKey(keyData) {
     id: result.insertedId.toString(),
     key: keyData.key,
     name: keyData.name,
+    discord_uid: keyData.discord_uid || null,
     description: keyData.description || null,
     is_active: true,
     created_at: new Date().toISOString(),
@@ -103,10 +106,39 @@ async function deactivateApiKey(key) {
   return result.modifiedCount > 0;
 }
 
+/**
+ * Get API key by Discord UID
+ * @param {string} discordUid - Discord user ID
+ * @returns {Promise<Object|null>}
+ */
+async function getApiKeyByDiscordUid(discordUid) {
+  if (!discordUid) return null;
+  
+  const db = dbClient.db(DB_NAME);
+  const apiKey = await db.collection("api_keys").findOne({
+    discord_uid: discordUid,
+    is_active: true
+  });
+  
+  if (!apiKey) return null;
+  
+  return {
+    id: apiKey._id.toString(),
+    key: apiKey.key,
+    name: apiKey.name,
+    discord_uid: apiKey.discord_uid,
+    description: apiKey.description || null,
+    is_active: apiKey.is_active,
+    created_at: apiKey.created_at.toISOString(),
+    last_used_at: apiKey.last_used_at?.toISOString() || null
+  };
+}
+
 export {
   isValidApiKey,
   updateApiKeyLastUsed,
   getAllApiKeys,
   createApiKey,
-  deactivateApiKey
+  deactivateApiKey,
+  getApiKeyByDiscordUid
 };

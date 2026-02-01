@@ -7,6 +7,8 @@
 - [API Endpoints](#api-endpoints)
   - [Health Check](#health-check)
   - [Strinova Redeem Codes](#strinova-redeem-codes)
+  - [Rewards](#rewards)
+  - [Uploaders](#uploaders)
   - [Admin API Keys](#admin-api-keys)
 - [Error Responses](#error-responses)
 - [Rate Limiting](#rate-limiting)
@@ -18,6 +20,16 @@
 ```url
 http://localhost:4000
 ```
+
+## API Documentation
+
+Interactive API documentation is available at:
+
+```url
+http://localhost:4000/api-docs
+```
+
+The Swagger UI provides a complete, interactive interface to explore and test all API endpoints.
 
 ---
 
@@ -173,11 +185,23 @@ Create a new redeem code.
 }
 ```
 
+**Alternative using Discord UID:**
+
+```json
+{
+  "discord_uid": "123456789012345678",
+  "code": "NEWCODE2026",
+  "expired_at": "2026-12-31",
+  "rewards": []
+}
+```
+
 **Field Descriptions:**
 
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
-| `uploader_id` | string | ✅ | MongoDB ObjectId of the uploader |
+| `uploader_id` | string | * | MongoDB ObjectId of the uploader (either this or discord_uid) |
+| `discord_uid` | string | * | Discord user ID (either this or uploader_id) |
 | `code` | string | ✅ | Unique redeem code |
 | `expired_at` | string | ❌ | Expiration date. Formats: `YYYY-MM-DD`, `DD/MM/YYYY`, or ISO 8601 |
 | `rewards` | array | ❌ | Array of reward objects |
@@ -234,6 +258,534 @@ Create a new redeem code.
 
 ---
 
+#### `PATCH /api/v1/strinova/code/:id`
+
+Update an existing redeem code.
+
+**Headers:**
+
+- `x-api-key` (required)
+
+**URL Parameters:**
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `id` | string | MongoDB ObjectId of the redeem code |
+
+**Request Body:**
+
+```json
+{
+  "code": "UPDATED2026",
+  "expired_at": "2027-12-31",
+  "rewards": [
+    {
+      "reward_id": "6979f06fd05710e613574c80",
+      "name": "Bablo",
+      "icon": "https://example.domain/bablo.png",
+      "amount": 200
+    }
+  ]
+}
+```
+
+**Field Descriptions:**
+
+All fields are optional. Only include fields you want to update.
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `code` | string | ❌ | New redeem code value |
+| `expired_at` | string | ❌ | New expiration date. Formats: `YYYY-MM-DD`, `DD/MM/YYYY`, or ISO 8601. Use `null` to remove expiration |
+| `rewards` | array | ❌ | Updated rewards array (replaces existing rewards) |
+
+**Response (Success):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6979f1120a08f8372fad355d",
+    "uploader_id": "6979f06fd05710e613574c79",
+    "code": "UPDATED2026",
+    "expired_at": "2027-12-31T23:59:59.999Z",
+    "created_at": "2026-01-28T11:20:50.241Z",
+    "rewards": [
+      {
+        "reward_id": "6979f06fd05710e613574c80",
+        "name": "Bablo",
+        "icon": "https://example.domain/bablo.png",
+        "amount": 200
+      }
+    ]
+  }
+}
+```
+
+**Error Responses:**
+
+```json
+// 400 Bad Request - Invalid format
+{
+  "success": false,
+  "error": "Invalid date format. Use YYYY-MM-DD or DD/MM/YYYY"
+}
+
+// 404 Not Found
+{
+  "success": false,
+  "error": "Redeem code not found"
+}
+
+// 409 Conflict - Duplicate code
+{
+  "success": false,
+  "error": "Redeem code already exists"
+}
+```
+
+---
+
+### Rewards
+
+#### `GET /api/v1/rewards`
+
+Get all rewards.
+
+**Headers:**
+
+- `x-api-key` (optional)
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "count": 2,
+  "data": [
+    {
+      "id": "6979f06fd05710e613574c80",
+      "name": "Bablo",
+      "icon": "https://example.domain/bablo.png"
+    },
+    {
+      "id": "6979f06fd05710e613574c81",
+      "name": "Dream Token",
+      "icon": "https://example.domain/dream_token.png"
+    }
+  ]
+}
+```
+
+### DELETE `/api/v1/strinova/code/:id`
+
+Delete a redeem code.
+
+**Authentication:** Required (x-api-key)
+
+**URL Parameters:**
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `id` | string | The redeem code ID (MongoDB ObjectId) |
+
+**Response (Success):**
+
+```json
+{
+  "success": true,
+  "message": "Redeem code deleted successfully"
+}
+```
+
+**Error Responses:**
+
+```json
+// 400 Bad Request - Invalid ID format
+{
+  "success": false,
+  "error": "Invalid redeem code ID format"
+}
+
+// 404 Not Found
+{
+  "success": false,
+  "error": "Redeem code not found"
+}
+
+// 500 Server Error
+{
+  "success": false,
+  "error": "Failed to delete redeem code"
+}
+```
+
+---
+
+#### `GET /api/v1/rewards/:id`
+
+Get reward by ID.
+
+**Headers:**
+
+- `x-api-key` (optional)
+
+**URL Parameters:**
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `id` | string | MongoDB ObjectId of the reward |
+
+**Example:**
+
+```http
+GET /api/v1/rewards/6979f06fd05710e613574c80
+```
+
+**Response (Success):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6979f06fd05710e613574c80",
+    "name": "Bablo",
+    "icon": "https://example.domain/bablo.png"
+  }
+}
+```
+
+**Error Response:**
+
+```json
+// 404 Not Found
+{
+  "success": false,
+  "error": "Reward not found"
+}
+```
+
+---
+
+#### `POST /api/v1/rewards`
+
+Create a new reward.
+
+**Headers:**
+
+- `Authorization` (required)
+
+**Request Body:**
+
+```json
+{
+  "name": "Bablo",
+  "icon": "https://example.domain/bablo.png"
+}
+```
+
+**Field Descriptions:**
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `name` | string | ✅ | Name of the reward |
+| `icon` | string | ❌ | Icon URL or filename |
+
+**Response (Success):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6979f06fd05710e613574c80",
+    "name": "Bablo",
+    "icon": "https://example.domain/bablo.png"
+  }
+}
+```
+
+**Error Responses:**
+
+```json
+// 400 Bad Request - Missing required field
+{
+  "success": false,
+  "error": "Name is required"
+}
+
+// 500 Internal Server Error
+{
+  "success": false,
+  "error": "Failed to create reward"
+}
+```
+
+---
+
+### Uploaders
+
+#### `GET /api/v1/uploaders`
+
+Get all uploaders.
+
+**Headers:**
+
+- `x-api-key` (optional)
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "count": 2,
+  "data": [
+    {
+      "id": "6979f06fd05710e613574c79",
+      "name": "Shiorin625",
+      "discord_uid": "123456789012345678",
+      "type": "default",
+      "status": "active",
+      "created_at": "2026-01-15T10:00:00.000Z"
+    },
+    {
+      "id": "6979f06fd05710e613574c80",
+      "name": "User123",
+      "discord_uid": "987654321098765432",
+      "type": "manager",
+      "status": "suspended",
+      "created_at": "2026-01-20T15:30:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+#### `GET /api/v1/uploaders/:id`
+
+Get uploader by ID.
+
+**Headers:**
+
+- `x-api-key` (optional)
+
+**URL Parameters:**
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `id` | string | MongoDB ObjectId of the uploader |
+
+**Example:**
+
+```http
+GET /api/v1/uploaders/6979f06fd05710e613574c79
+```
+
+**Response (Success):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6979f06fd05710e613574c79",
+    "name": "Shiorin625",
+    "discord_uid": "123456789012345678",
+    "type": "default",
+    "status": "active",
+    "created_at": "2026-01-15T10:00:00.000Z"
+  }
+}
+```
+
+**Error Response:**
+
+```json
+// 404 Not Found
+{
+  "success": false,
+  "error": "Uploader not found"
+}
+```
+
+---
+
+#### `GET /api/v1/uploaders/discord/:discordUid`
+
+Get uploader by Discord user ID.
+
+**Headers:**
+
+- `x-api-key` (optional)
+
+**URL Parameters:**
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `discordUid` | string | Discord user ID |
+
+**Example:**
+
+```http
+GET /api/v1/uploaders/discord/123456789012345678
+```
+
+**Response (Success):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6979f06fd05710e613574c79",
+    "name": "Shiorin625",
+    "discord_uid": "123456789012345678",
+    "type": "default",
+    "status": "active",
+    "created_at": "2026-01-15T10:00:00.000Z"
+  }
+}
+```
+
+**Error Response:**
+
+```json
+// 404 Not Found
+{
+  "success": false,
+  "error": "Uploader not found with this Discord ID"
+}
+```
+
+---
+
+#### `POST /api/v1/uploaders`
+
+Create a new uploader.
+
+**Headers:**
+
+- `Authorization` (required)
+
+**Request Body:**
+
+```json
+{
+  "name": "Shiorin625",
+  "discord_uid": "123456789012345678",
+  "type": "default",
+  "status": "active"
+}
+```
+
+**Field Descriptions:**
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `name` | string | ✅ | Uploader's name |
+| `discord_uid` | string | ✅ | Discord user ID |
+| `type` | string | ❌ | Type/role: default, manager, or admin (default: default) |
+| `status` | string | ❌ | Status: active, suspended, or banned (default: active) |
+
+**Response (Success):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6979f06fd05710e613574c79",
+    "name": "Shiorin625",
+    "discord_uid": "123456789012345678",
+    "type": "default",
+    "status": "active",
+    "created_at": "2026-01-15T10:00:00.000Z"
+  }
+}
+```
+
+**Error Responses:**
+
+```json
+// 400 Bad Request - Missing required fields
+{
+  "success": false,
+  "error": "name and discord_uid are required"
+}
+
+// 400 Bad Request - Invalid type
+{
+  "success": false,
+  "error": "Invalid type. Must be: default, manager, or admin"
+}
+
+// 400 Bad Request - Invalid status
+{
+  "success": false,
+  "error": "status must be: active, suspended, or banned"
+}
+
+// 409 Conflict
+{
+  "success": false,
+  "error": "Uploader with this Discord ID already exists"
+}
+```
+
+---
+
+#### `PATCH /api/v1/uploaders/:id/status`
+
+Update uploader status.
+
+**Headers:**
+
+- `Authorization` (required)
+
+**URL Parameters:**
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `id` | string | MongoDB ObjectId of the uploader |
+
+**Request Body:**
+
+```json
+{
+  "status": "suspended"
+}
+```
+
+**Field Descriptions:**
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `status` | string | ✅ | New status: active, suspended, or banned |
+
+**Response (Success):**
+
+```json
+{
+  "success": true,
+  "message": "Uploader status updated successfully"
+}
+```
+
+**Error Responses:**
+
+```json
+// 400 Bad Request
+{
+  "success": false,
+  "error": "status is required"
+}
+
+// 404 Not Found
+{
+  "success": false,
+  "error": "Uploader not found"
+}
+```
+
+---
+
 ### Admin API Keys
 
 #### `GET /api/v1/admin/keys`
@@ -255,6 +807,7 @@ Get all API keys.
       "id": "69788bf6d3239aecdc899a50",
       "key": "fbd384e7f16f2a51546ba24b002a35cf...",
       "name": "Shiorin625",
+      "discord_uid": "123456789012345678",
       "description": "Provider api key",
       "is_active": true,
       "created_at": "2026-01-27T09:57:10.888Z",
@@ -279,6 +832,7 @@ Create a new API key.
 ```json
 {
   "name": "New API Key",
+  "discord_uid": "123456789012345678",
   "description": "Optional description"
 }
 ```
@@ -288,6 +842,7 @@ Create a new API key.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `name` | string | ✅ | Name for the API key |
+| `discord_uid` | string | ❌ | Discord user ID |
 | `description` | string | ❌ | Description of the key's purpose |
 
 **Response:**
@@ -299,11 +854,62 @@ Create a new API key.
     "id": "69788bf6d3239aecdc899a51",
     "key": "a1b2c3d4e5f6...",
     "name": "New API Key",
+    "discord_uid": "123456789012345678",
     "description": "Optional description",
     "is_active": true,
     "created_at": "2026-01-31T10:30:00.000Z",
     "last_used_at": null
   }
+}
+```
+
+---
+
+#### `GET /api/v1/admin/keys/discord/:discordUid`
+
+Get API key by Discord user ID.
+
+**Headers:**
+
+- `Authorization` (required)
+
+**URL Parameters:**
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `discordUid` | string | Discord user ID |
+
+**Example:**
+
+```http
+GET /api/v1/admin/keys/discord/123456789012345678
+```
+
+**Response (Success):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "69788bf6d3239aecdc899a50",
+    "key": "fbd384e7f16f2a51546ba24b002a35cf...",
+    "name": "Shiorin625",
+    "discord_uid": "123456789012345678",
+    "description": "Provider api key",
+    "is_active": true,
+    "created_at": "2026-01-27T09:57:10.888Z",
+    "last_used_at": "2026-01-28T11:14:28.600Z"
+  }
+}
+```
+
+**Error Response:**
+
+```json
+// 404 Not Found
+{
+  "success": false,
+  "error": "No active API key found for this Discord user"
 }
 ```
 
@@ -454,11 +1060,22 @@ MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net
 MONGODB_DBNAME=Strinova
 
 # Security
+AUTH_KEY=your-admin-auth-key
+DEFAULT_API_KEY=your-default-api-key
 CORS_ORIGIN=*
 
 # Rate Limiting
 RATE_LIMITER_MAX_REQUESTS=100
 ```
+
+**Environment Variables Description:**
+
+| Variable | Description |
+| --- | --- |
+| `AUTH_KEY` | Admin authentication key for protected endpoints |
+| `DEFAULT_API_KEY` | Default API key automatically added to database on startup |
+
+**Note:** The `DEFAULT_API_KEY` will be automatically inserted into the `api_keys` collection when the server starts. If the key already exists but is inactive, it will be reactivated.
 
 ---
 
@@ -469,5 +1086,5 @@ RATE_LIMITER_MAX_REQUESTS=100
 
 ---
 
-**Last Updated:** January 31, 2026
+**Last Updated:** February 1, 2026
 **API Version:** v1

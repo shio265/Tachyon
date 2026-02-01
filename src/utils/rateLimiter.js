@@ -19,8 +19,8 @@ const limiter = rateLimit({
         const isValid = await isValidApiKey(apiKey);
         
         if (isValid) {
-            // Update last used timestamp (fire and forget)
-            updateApiKeyLastUsed(apiKey).catch(console.error);
+            // Update last used timestamp
+            await updateApiKeyLastUsed(apiKey);
         }
         
         return isValid;

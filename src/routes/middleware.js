@@ -1,6 +1,17 @@
 function loggingMiddleware(req, res, next) {
-  // Skip logging for favicon requests
-  if (req.path === '/favicon.ico') {
+
+  // Skip logging for Swagger static resources
+  const swaggerResources = [
+    '/favicon.ico',
+    '/swagger-ui.css',
+    '/swagger-ui-bundle.js',
+    '/swagger-ui-standalone-preset.js',
+    '/swagger-ui-init.js',
+    '/favicon-32x32.png',
+    '/favicon-16x16.png'
+  ];
+  
+  if (swaggerResources.includes(req.path)) {
     return next();
   }
   

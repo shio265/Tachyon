@@ -14,10 +14,18 @@ async function initMongo() {
       validator: {
         $jsonSchema: {
           bsonType: "object",
-          required: ["name", "discord_uid", "created_at"],
+          required: ["name", "discord_uid", "type", "created_at"],
           properties: {
             name: { bsonType: "string" },
             discord_uid: { bsonType: "string" },
+            type: { 
+              bsonType: "string",
+              enum: ["default", "manager", "admin"]
+            },
+            status: {
+              bsonType: "string",
+              enum: ["active", "suspended", "banned"]
+            },
             created_at: { bsonType: "date" }
           }
         }
@@ -50,6 +58,7 @@ async function initMongo() {
   }
 
   await db.collection("rewards").createIndex({ name: 1 });
+  await db.collection("rewards").createIndex({ icon: 1 });
 
   try {
     await db.createCollection("redeem_codes", {

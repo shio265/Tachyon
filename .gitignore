@@ -13,4 +13,9 @@ yarn.lock
 .env
 
 # Docker
+docker-compose.example.yml
+Dockerfile
+
+# Caddy
+Caddyfile
 docker-compose.yml

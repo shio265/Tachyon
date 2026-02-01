@@ -16,7 +16,6 @@ function adminAuth(req, res, next) {
     });
   }
   
-  // Extract token from "Bearer <token>" format
   const token = authHeader.startsWith('Bearer ') 
     ? authHeader.substring(7) 
     : authHeader;

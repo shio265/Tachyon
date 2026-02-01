@@ -61,6 +61,20 @@ async function getAllRedeemCodes() {
 async function createRedeemCode(codeData) {
   const db = dbClient.db(DB_NAME);
   
+  // Validate ObjectId format
+  if (!ObjectId.isValid(codeData.uploader_id)) {
+    throw new Error("Invalid uploader_id format");
+  }
+  
+  // Validate reward_id format in rewards array
+  if (codeData.rewards && codeData.rewards.length > 0) {
+    for (const reward of codeData.rewards) {
+      if (reward.reward_id && !ObjectId.isValid(reward.reward_id)) {
+        throw new Error(`Invalid reward_id format: ${reward.reward_id}`);
+      }
+    }
+  }
+  
   // Check if code already exists
   const existingCode = await db.collection("redeem_codes").findOne({ code: codeData.code });
   if (existingCode) {
@@ -95,6 +109,107 @@ async function createRedeemCode(codeData) {
 }
 
 /**
+ * Update redeem code
+ * @param {string} id - Redeem code ID
+ * @param {Object} updateData - { code?, expired_at?, rewards? }
+ * @returns {Promise<Object>}
+ */
+async function updateRedeemCode(id, updateData) {
+  if (!ObjectId.isValid(id)) {
+    throw new Error("Invalid redeem code ID format");
+  }
+  
+  const db = dbClient.db(DB_NAME);
+  
+  // Build update object
+  const updateDoc = {};
+  
+  if (updateData.code !== undefined) {
+    // Check if new code already exists
+    const existingCode = await db.collection("redeem_codes").findOne({
+      code: updateData.code,
+      _id: { $ne: new ObjectId(id) }
+    });
+    
+    if (existingCode) {
+      const error = new Error("Redeem code already exists");
+      error.code = 11000;
+      throw error;
+    }
+    
+    updateDoc.code = updateData.code;
+  }
+  
+  if (updateData.expired_at !== undefined) {
+    updateDoc.expired_at = updateData.expired_at ? new Date(updateData.expired_at) : null;
+  }
+  
+  if (updateData.rewards !== undefined) {
+    // Validate reward_id format in rewards array
+    if (updateData.rewards.length > 0) {
+      for (const reward of updateData.rewards) {
+        if (reward.reward_id && !ObjectId.isValid(reward.reward_id)) {
+          throw new Error(`Invalid reward_id format: ${reward.reward_id}`);
+        }
+      }
+    }
+    
+    updateDoc.rewards = updateData.rewards.map(reward => ({
+      reward_id: new ObjectId(reward.reward_id),
+      name: reward.name,
+      icon: reward.icon,
+      amount: reward.amount
+    }));
+  }
+  
+  if (Object.keys(updateDoc).length === 0) {
+    throw new Error("No valid fields to update");
+  }
+  
+  const result = await db.collection("redeem_codes").findOneAndUpdate(
+    { _id: new ObjectId(id) },
+    { $set: updateDoc },
+    { returnDocument: 'after' }
+  );
+  
+  if (!result) {
+    throw new Error("Redeem code not found");
+  }
+  
+  return {
+    id: result._id.toString(),
+    uploader_id: result.uploader_id.toString(),
+    code: result.code,
+    expired_at: result.expired_at?.toISOString() || null,
+    created_at: result.created_at.toISOString(),
+    rewards: result.rewards?.map(reward => ({
+      reward_id: reward.reward_id.toString(),
+      name: reward.name,
+      icon: reward.icon,
+      amount: reward.amount
+    })) || []
+  };
+}
+
+/**
+ * Delete redeem code
+ * @param {string} id - Redeem code ID
+ * @returns {Promise<boolean>}
+ */
+async function deleteRedeemCode(id) {
+  if (!ObjectId.isValid(id)) {
+    throw new Error("Invalid redeem code ID format");
+  }
+  
+  const db = dbClient.db(DB_NAME);
+  const result = await db.collection("redeem_codes").deleteOne({
+    _id: new ObjectId(id)
+  });
+  
+  return result.deletedCount > 0;
+}
+
+/**
  * Check if redeem code is expired
  * @param {string} code - Redeem code
  * @returns {Promise<boolean>}
@@ -112,5 +227,7 @@ export {
   getRedeemCodeByCode, 
   getAllRedeemCodes, 
   createRedeemCode,
+  updateRedeemCode,
+  deleteRedeemCode,
   isRedeemCodeExpired 
 };

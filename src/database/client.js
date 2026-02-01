@@ -23,10 +23,14 @@ async function initCollections(db) {
       validator: {
         $jsonSchema: {
           bsonType: "object",
-          required: ["name", "discord_uid", "created_at"],
+          required: ["name", "discord_uid", "status", "created_at"],
           properties: {
             name: { bsonType: "string" },
             discord_uid: { bsonType: "string" },
+            status: { 
+              bsonType: "string",
+              enum: ["active", "suspended", "banned"]
+            },
             created_at: { bsonType: "date" }
           }
         }
@@ -37,6 +41,7 @@ async function initCollections(db) {
       { discord_uid: 1 },
       { unique: true }
     );
+    await db.collection("uploaders").createIndex({ status: 1 });
   }
 
   /* ========= rewards ========= */
@@ -105,6 +110,7 @@ async function initCollections(db) {
           properties: {
             key: { bsonType: "string" },
             name: { bsonType: "string" },
+            discord_uid: { bsonType: ["string", "null"] },
             description: { bsonType: ["string", "null"] },
             is_active: { bsonType: "bool" },
             created_at: { bsonType: "date" },
@@ -119,6 +125,31 @@ async function initCollections(db) {
       { unique: true }
     );
     await db.collection("api_keys").createIndex({ is_active: 1 });
+    await db.collection("api_keys").createIndex({ discord_uid: 1 });
+  }
+
+  // Insert or update default API key from environment
+  const defaultApiKey = process.env.DEFAULT_API_KEY;
+  if (defaultApiKey) {
+    const existingKey = await db.collection("api_keys").findOne({ key: defaultApiKey });
+    
+    if (!existingKey) {
+      await db.collection("api_keys").insertOne({
+        key: defaultApiKey,
+        name: "Default API Key",
+        discord_uid: null,
+        description: "Default API key from environment variables",
+        is_active: true,
+        created_at: new Date(),
+        last_used_at: null
+      });
+    } else if (!existingKey.is_active) {
+      await db.collection("api_keys").updateOne(
+        { key: defaultApiKey },
+        { $set: { is_active: true } }
+      );
+      console.log('\x1b[33m%s\x1b[0m', 'Default API key reactivated');
+    }
   }
 
   console.log('\x1b[32m%s\x1b[0m', 'Collections initialized');

@@ -24,6 +24,8 @@ Stores information about users who upload redeem codes.
   _id: ObjectId,           // Auto-generated
   name: String,            // REQUIRED: Uploader's name
   discord_uid: String,     // REQUIRED: Discord user ID (UNIQUE)
+  type: String,            // REQUIRED: Type/role (default, manager, admin)
+  status: String,          // REQUIRED: Status (active, suspended, banned)
   created_at: Date         // REQUIRED: Account creation date
 }
 ```
@@ -31,6 +33,7 @@ Stores information about users who upload redeem codes.
 **Indexes:**
 
 - `discord_uid` (unique)
+- `status` (non-unique)
 
 **Example Document:**
 
@@ -39,6 +42,8 @@ Stores information about users who upload redeem codes.
   "_id": "6979f06fd05710e613574c79",
   "name": "Shiorin625",
   "discord_uid": "123456789012345678",
+  "type": "default",
+  "status": "active",
   "created_at": "2026-01-15T10:00:00.000Z"
 }
 ```
@@ -144,6 +149,7 @@ Stores API keys for authentication.
   _id: ObjectId,               // Auto-generated
   key: String,                 // REQUIRED: API key (UNIQUE)
   name: String,                // REQUIRED: Key identifier/name
+  discord_uid: String | null,  // OPTIONAL: Discord user ID
   description: String | null,  // OPTIONAL: Key description
   is_active: Boolean,          // REQUIRED: Active status (default: true)
   created_at: Date,            // REQUIRED: Creation date
@@ -155,6 +161,7 @@ Stores API keys for authentication.
 
 - `key` (unique)
 - `is_active` (non-unique)
+- `discord_uid` (non-unique)
 
 **Example Document:**
 
@@ -163,6 +170,7 @@ Stores API keys for authentication.
   "_id": "69788bf6d3239aecdc899a50",
   "key": "examplekey",
   "name": "Shio625",
+  "discord_uid": "123456789012345678",
   "description": "Provider api key",
   "is_active": true,
   "created_at": "2026-01-27T09:57:10.888Z",

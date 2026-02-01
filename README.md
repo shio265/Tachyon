@@ -1,15 +1,33 @@
 # Tachyon
 
-To install dependencies:
+REST API server with authentication, rate limiting, and reward system.
+
+## Installation
 
 ```bash
 bun install
 ```
 
-To run:
+## Usage
 
 ```bash
 bun run start
 ```
 
-This project was created using `bun init` in bun v1.3.5. [Bun](https://bun.com) is a fast all-in-one JavaScript runtime.
+## API Structure
+
+- `/api/v1/` - Version 1 endpoints
+  - API key management
+  - Strinova integration
+  - Redeem codes and rewards
+
+## Features
+
+- MongoDB database integration
+- API key authentication
+- Rate limiting
+- Reward and redeem code system
+
+## Documentation
+
+See `/docs` folder for detailed API documentation and database schema.
