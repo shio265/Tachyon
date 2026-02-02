@@ -78,6 +78,17 @@ router.get("/", (req, res) => {
  *         schema:
  *           type: string
  *         description: Filter by reward name (case-insensitive partial match)
+ *       - in: query
+ *         name: version
+ *         schema:
+ *           type: string
+ *         description: Filter by version
+ *       - in: query
+ *         name: sort
+ *         schema:
+ *           type: string
+ *           enum: [index, created_at, -index, -created_at]
+ *         description: Sort order (index=asc, -index=desc, created_at=asc, -created_at=desc, default=index asc)
  *     responses:
  *       200:
  *         description: List of redeem codes retrieved successfully
@@ -103,7 +114,7 @@ router.get("/", (req, res) => {
  */
 router.get("/code", async (req, res) => {
   try {
-    const { active, reward } = req.query;
+    const { active, reward, version, sort } = req.query;
     
     let codes = await getAllRedeemCodes();
     
@@ -125,6 +136,30 @@ router.get("/code", async (req, res) => {
           r.name.toLowerCase().includes(reward.toLowerCase())
         )
       );
+    }
+    
+    // Filter by version
+    if (version) {
+      codes = codes.filter(code => code.version === version);
+    }
+    
+    // Apply custom sorting if requested
+    if (sort) {
+      const sortField = sort.startsWith('-') ? sort.substring(1) : sort;
+      const sortOrder = sort.startsWith('-') ? -1 : 1;
+      
+      codes.sort((a, b) => {
+        let aVal = a[sortField];
+        let bVal = b[sortField];
+        
+        // Handle date strings
+        if (sortField === 'created_at' || sortField === 'expired_at') {
+          aVal = aVal ? new Date(aVal).getTime() : 0;
+          bVal = bVal ? new Date(bVal).getTime() : 0;
+        }
+        
+        return sortOrder * (aVal > bVal ? 1 : aVal < bVal ? -1 : 0);
+      });
     }
     
     res.json({
@@ -206,7 +241,7 @@ router.get("/code", async (req, res) => {
  */
 router.post("/code", async (req, res) => {
   try {
-    const { uploader_id, discord_uid, code, expired_at, rewards } = req.body;
+    const { uploader_id, discord_uid, code, version, index, expired_at, rewards } = req.body;
     
     // Validation - accept either uploader_id OR discord_uid
     if (!code) {
@@ -220,6 +255,14 @@ router.post("/code", async (req, res) => {
       return res.status(400).json({
         success: false,
         error: "Either uploader_id or discord_uid is required"
+      });
+    }
+    
+    // Validate version if provided
+    if (version && !['global', 'cn', 'mobile'].includes(version)) {
+      return res.status(400).json({
+        success: false,
+        error: "version must be one of: global, cn, mobile"
       });
     }
     
@@ -270,6 +313,8 @@ router.post("/code", async (req, res) => {
     const newCode = await createRedeemCode({
       uploader_id: finalUploaderId,
       code,
+      version: version || null,
+      index: index !== undefined ? parseInt(index) : 0,
       expired_at: parsedExpiredAt,
       rewards: rewards || []
     });
@@ -332,6 +377,15 @@ router.post("/code", async (req, res) => {
  *                 type: string
  *                 description: New redeem code value
  *                 example: UPDATED2026
+ *               version:
+ *                 type: string
+ *                 enum: [global, cn, mobile]
+ *                 description: Version type (global, cn, or mobile)
+ *                 example: global
+ *               index:
+ *                 type: integer
+ *                 description: Sort order index
+ *                 example: 5
  *               expired_at:
  *                 type: string
  *                 description: New expiration date (YYYY-MM-DD, DD/MM/YYYY, or ISO 8601)
@@ -374,7 +428,15 @@ router.post("/code", async (req, res) => {
 router.patch("/code/:id", async (req, res) => {
   try {
     const { id } = req.params;
-    const { code, expired_at, rewards } = req.body;
+    const { code, version, index, expired_at, rewards } = req.body;
+    
+    // Validate version if provided
+    if (version !== undefined && version !== null && !['global', 'cn', 'mobile'].includes(version)) {
+      return res.status(400).json({
+        success: false,
+        error: "version must be one of: global, cn, mobile"
+      });
+    }
     
     // Parse expired_at if provided
     let parsedExpiredAt = undefined;
@@ -412,6 +474,8 @@ router.patch("/code/:id", async (req, res) => {
     // Build update data
     const updateData = {};
     if (code !== undefined) updateData.code = code;
+    if (version !== undefined) updateData.version = version;
+    if (index !== undefined) updateData.index = parseInt(index);
     if (parsedExpiredAt !== undefined) updateData.expired_at = parsedExpiredAt;
     if (rewards !== undefined) updateData.rewards = rewards;
     

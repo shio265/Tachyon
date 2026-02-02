@@ -91,6 +91,8 @@ Stores redeem codes with their associated rewards and metadata.
   _id: ObjectId,           // Auto-generated
   uploader_id: ObjectId,   // REQUIRED: Reference to uploaders._id
   code: String,            // REQUIRED: Unique redeem code (UNIQUE)
+  version: String | null,  // OPTIONAL: Version ("global", "cn", or "mobile")
+  index: Int32,            // OPTIONAL: Sort order (default: 0)
   expired_at: Date | null, // OPTIONAL: Expiration date
   created_at: Date,        // REQUIRED: Creation date
   rewards: [               // OPTIONAL: Array of rewards
@@ -107,6 +109,7 @@ Stores redeem codes with their associated rewards and metadata.
 **Indexes:**
 
 - `code` (unique)
+- `index` (non-unique) - for sorting
 - `expired_at` (non-unique)
 - `uploader_id` (non-unique)
 
@@ -117,6 +120,8 @@ Stores redeem codes with their associated rewards and metadata.
   "_id": "6979f1120a08f8372fad355d",
   "uploader_id": "6979f06fd05710e613574c79",
   "code": "STRINOVA2026",
+  "version": "global",
+  "index": 0,
   "expired_at": "2026-12-31T23:59:59.999Z",
   "created_at": "2026-01-28T11:20:50.241Z",
   "rewards": [

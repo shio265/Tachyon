@@ -19,6 +19,8 @@ async function getRedeemCodeByCode(code) {
     id: redeemCode._id.toString(),
     uploader_id: redeemCode.uploader_id.toString(),
     code: redeemCode.code,
+    version: redeemCode.version || null,
+    index: redeemCode.index || 0,
     expired_at: redeemCode.expired_at?.toISOString() || null,
     created_at: redeemCode.created_at.toISOString(),
     rewards: redeemCode.rewards?.map(reward => ({
@@ -36,12 +38,17 @@ async function getRedeemCodeByCode(code) {
  */
 async function getAllRedeemCodes() {
   const db = dbClient.db(DB_NAME);
-  const redeemCodes = await db.collection("redeem_codes").find({}).toArray();
+  const redeemCodes = await db.collection("redeem_codes")
+    .find({})
+    .sort({ index: 1, created_at: -1 }) // Sort by index ascending, then by created_at descending
+    .toArray();
   
   return redeemCodes.map(redeemCode => ({
     id: redeemCode._id.toString(),
     uploader_id: redeemCode.uploader_id.toString(),
     code: redeemCode.code,
+    version: redeemCode.version || null,
+    index: redeemCode.index || 0,
     expired_at: redeemCode.expired_at?.toISOString() || null,
     created_at: redeemCode.created_at.toISOString(),
     rewards: redeemCode.rewards?.map(reward => ({
@@ -86,6 +93,8 @@ async function createRedeemCode(codeData) {
   const redeemCodeDoc = {
     uploader_id: new ObjectId(codeData.uploader_id),
     code: codeData.code,
+    version: codeData.version || null,
+    index: codeData.index || 0,
     expired_at: codeData.expired_at ? new Date(codeData.expired_at) : null,
     created_at: new Date(),
     rewards: codeData.rewards?.map(reward => ({
@@ -102,6 +111,8 @@ async function createRedeemCode(codeData) {
     id: result.insertedId.toString(),
     uploader_id: codeData.uploader_id,
     code: codeData.code,
+    version: codeData.version || null,
+    index: codeData.index || 0,
     expired_at: redeemCodeDoc.expired_at?.toISOString() || null,
     created_at: redeemCodeDoc.created_at.toISOString(),
     rewards: codeData.rewards || []
@@ -144,6 +155,14 @@ async function updateRedeemCode(id, updateData) {
     updateDoc.expired_at = updateData.expired_at ? new Date(updateData.expired_at) : null;
   }
   
+  if (updateData.version !== undefined) {
+    updateDoc.version = updateData.version;
+  }
+  
+  if (updateData.index !== undefined) {
+    updateDoc.index = updateData.index;
+  }
+  
   if (updateData.rewards !== undefined) {
     // Validate reward_id format in rewards array
     if (updateData.rewards.length > 0) {
@@ -180,6 +199,8 @@ async function updateRedeemCode(id, updateData) {
     id: result._id.toString(),
     uploader_id: result.uploader_id.toString(),
     code: result.code,
+    version: result.version || null,
+    index: result.index || 0,
     expired_at: result.expired_at?.toISOString() || null,
     created_at: result.created_at.toISOString(),
     rewards: result.rewards?.map(reward => ({

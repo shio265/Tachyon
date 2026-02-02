@@ -121,6 +121,8 @@ Get all redeem codes with optional filtering.
 | --- | --- | --- |
 | `active` | boolean | Filter active codes (not expired). Use `true` or `false` |
 | `reward` | string | Filter by reward name (case-insensitive partial match) |
+| `version` | string | Filter by version (`global`, `cn`, or `mobile`) |
+| `sort` | string | Sort order: `index`, `-index`, `created_at`, `-created_at` (default: `index` asc) |
 
 **Examples:**
 
@@ -128,7 +130,9 @@ Get all redeem codes with optional filtering.
 GET /api/v1/strinova/code
 GET /api/v1/strinova/code?active=true
 GET /api/v1/strinova/code?reward=gems
-GET /api/v1/strinova/code?active=true&reward=coins
+GET /api/v1/strinova/code?version=global
+GET /api/v1/strinova/code?sort=-created_at
+GET /api/v1/strinova/code?active=true&version=global&sort=index
 ```
 
 **Response:**
@@ -142,6 +146,8 @@ GET /api/v1/strinova/code?active=true&reward=coins
       "id": "6979f1120a08f8372fad355d",
       "uploader_id": "6979f06fd05710e613574c79",
       "code": "STRINOVA2026",
+      "version": "global",
+      "index": 0,
       "expired_at": "2026-12-31T23:59:59.999Z",
       "created_at": "2026-01-28T11:20:50.241Z",
       "rewards": [
@@ -173,6 +179,8 @@ Create a new redeem code.
 {
   "uploader_id": "6979f06fd05710e613574c79",
   "code": "NEWCODE2026",
+  "version": "global",
+  "index": 0,
   "expired_at": "2026-12-31",
   "rewards": [
     {
@@ -191,6 +199,8 @@ Create a new redeem code.
 {
   "discord_uid": "123456789012345678",
   "code": "NEWCODE2026",
+  "version": "global",
+  "index": 0,
   "expired_at": "2026-12-31",
   "rewards": []
 }
@@ -203,6 +213,8 @@ Create a new redeem code.
 | `uploader_id` | string | * | MongoDB ObjectId of the uploader (either this or discord_uid) |
 | `discord_uid` | string | * | Discord user ID (either this or uploader_id) |
 | `code` | string | ✅ | Unique redeem code |
+| `version` | string | ❌ | Version type: `global`, `cn`, or `mobile` |
+| `index` | integer | ❌ | Sort order index (lower numbers appear first, default: 0) |
 | `expired_at` | string | ❌ | Expiration date. Formats: `YYYY-MM-DD`, `DD/MM/YYYY`, or ISO 8601 |
 | `rewards` | array | ❌ | Array of reward objects |
 
@@ -221,6 +233,8 @@ Create a new redeem code.
     "id": "6979f1120a08f8372fad355d",
     "uploader_id": "6979f06fd05710e613574c79",
     "code": "NEWCODE2026",
+    "version": "global",
+    "index": 0,
     "expired_at": "2026-12-31T23:59:59.999Z",
     "created_at": "2026-01-31T10:30:00.000Z",
     "rewards": []
@@ -469,18 +483,29 @@ GET /api/v1/rewards/6979f06fd05710e613574c80
 
 #### `POST /api/v1/rewards`
 
-Create a new reward.
+Create a new reward with optional image upload.
 
 **Headers:**
 
 - `Authorization` (required)
 
-**Request Body:**
+**Request (Option 1 - Upload Image File):**
+
+Content-Type: `multipart/form-data`
+
+```txt
+name: Bablo
+icon: [image file - jpg/png/gif/webp, max 5MB]
+```
+
+**Request (Option 2 - Provide URL):**
+
+Content-Type: `multipart/form-data` or `application/json`
 
 ```json
 {
   "name": "Bablo",
-  "icon": "https://example.domain/bablo.png"
+  "iconUrl": "https://example.domain/bablo.png"
 }
 ```
 
@@ -489,7 +514,10 @@ Create a new reward.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `name` | string | ✅ | Name of the reward |
-| `icon` | string | ❌ | Icon URL or filename |
+| `icon` | file | ❌ | Image file to upload (jpg, png, gif, webp - max 5MB) |
+| `iconUrl` | string | ❌ | Direct icon URL (if not uploading file) |
+
+**Note:** You can either upload an image file (`icon`) or provide a URL (`iconUrl`). If both are provided, the uploaded file takes priority. The image will be automatically resized to max 512x512px and optimized via Cloudinary.
 
 **Response (Success):**
 
@@ -499,7 +527,7 @@ Create a new reward.
   "data": {
     "id": "6979f06fd05710e613574c80",
     "name": "Bablo",
-    "icon": "https://example.domain/bablo.png"
+    "icon": "https://res.cloudinary.com/your-cloud/image/upload/v1234567890/rewards/abc123.png"
   }
 }
 ```
@@ -513,11 +541,177 @@ Create a new reward.
   "error": "Name is required"
 }
 
+// 400 Bad Request - File too large
+{
+  "success": false,
+  "error": "File size too large. Maximum size is 5MB"
+}
+
+// 400 Bad Request - Invalid file type
+{
+  "success": false,
+  "error": "Only image files are allowed!"
+}
+
+// 500 Internal Server Error - Cloudinary not configured
+{
+  "success": false,
+  "error": "Cloudinary is not configured. Cannot upload image."
+}
+
 // 500 Internal Server Error
 {
   "success": false,
   "error": "Failed to create reward"
 }
+```
+
+**cURL Example (Upload File):**
+
+```bash
+curl -X POST http://localhost:4000/api/v1/rewards \
+  -H "Authorization: Bearer your-admin-key" \
+  -F "name=Bablo" \
+  -F "icon=@/path/to/image.png"
+```
+
+**cURL Example (Provide URL):**
+
+```bash
+curl -X POST http://localhost:4000/api/v1/rewards \
+  -H "Authorization: Bearer your-admin-key" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "Bablo", "iconUrl": "https://example.com/icon.png"}'
+```
+
+---
+
+#### `PATCH /api/v1/rewards/:id`
+
+Update an existing reward.
+
+**Headers:**
+
+- `Authorization` (required)
+
+**URL Parameters:**
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `id` | string | MongoDB ObjectId of the reward |
+
+**Request Body (multipart/form-data):**
+
+```txt
+name: Updated Bablo
+icon: [image file - optional]
+iconUrl: https://example.com/new-icon.png (optional)
+```
+
+**Field Descriptions:**
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `name` | string | ❌ | New name of the reward |
+| `icon` | file | ❌ | New icon image file |
+| `iconUrl` | string | ❌ | New icon URL |
+
+**Response (Success):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "id": "6979f06fd05710e613574c80",
+    "name": "Updated Bablo",
+    "icon": "https://res.cloudinary.com/your-cloud/image/upload/v1234567890/rewards/updated.png"
+  }
+}
+```
+
+**Error Responses:**
+
+```json
+// 400 Bad Request - No fields to update
+{
+  "success": false,
+  "error": "No valid fields to update"
+}
+
+// 404 Not Found
+{
+  "success": false,
+  "error": "Reward not found"
+}
+
+// 500 Internal Server Error
+{
+  "success": false,
+  "error": "Failed to update reward"
+}
+```
+
+**cURL Example:**
+
+```bash
+curl -X PATCH http://localhost:4000/api/v1/rewards/6979f06fd05710e613574c80 \
+  -H "Authorization: Bearer your-admin-key" \
+  -F "name=Updated Bablo" \
+  -F "icon=@/path/to/new-image.png"
+```
+
+---
+
+#### `DELETE /api/v1/rewards/:id`
+
+Delete a reward.
+
+**Headers:**
+
+- `Authorization` (required)
+
+**URL Parameters:**
+
+| Parameter | Type | Description |
+| --- | --- | --- |
+| `id` | string | MongoDB ObjectId of the reward |
+
+**Response (Success):**
+
+```json
+{
+  "success": true,
+  "message": "Reward deleted successfully"
+}
+```
+
+**Error Responses:**
+
+```json
+// 400 Bad Request - Invalid ID format
+{
+  "success": false,
+  "error": "Invalid reward ID format"
+}
+
+// 404 Not Found
+{
+  "success": false,
+  "error": "Reward not found"
+}
+
+// 500 Internal Server Error
+{
+  "success": false,
+  "error": "Failed to delete reward"
+}
+```
+
+**cURL Example:**
+
+```bash
+curl -X DELETE http://localhost:4000/api/v1/rewards/6979f06fd05710e613574c80 \
+  -H "Authorization: Bearer your-admin-key"
 ```
 
 ---

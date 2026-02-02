@@ -27,7 +27,11 @@ bun run start
 - API key authentication
 - Rate limiting
 - Reward and redeem code system
+- Cloudinary image upload for reward icons
 
 ## Documentation
 
-See `/docs` folder for detailed API documentation and database schema.
+See `/docs` folder for detailed API documentation and database schema:
+
+- [API v1 Documentation](docs/API%20v1.md)
+- [Database Schema](docs/DATABASE.md)
